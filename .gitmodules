@@ -1,0 +1,3 @@
+[submodule "Spacescape/external/QtPropertyBrowser"]
+	path = Spacescape/external/QtPropertyBrowser
+	url = https://github.com/bazhenovc/QtPropertyBrowser.git
