@@ -1,6 +1,9 @@
 # spacescape
 Spacescape, Copyright 2010 Alex Peterson, All Rights Reserved.
 
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/py2OeGYhZVw/0.jpg)](https://www.youtube.com/watch?v=py2OeGYhZVw)
+
+
 This file is part of Spacescape
 For the latest info, see http://alexcpeterson.com/spacescape
 
