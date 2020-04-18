@@ -28,7 +28,6 @@ IF(APPLE)
     # don't glob, we don't want all .h files - some are windows specific
     SET(SPC_SRCS
         src/Main.cpp
-        src/QtOgreWidgetOSX.cpp
         src/QtSpacescapeAboutDialog.cpp
         src/QtSpacescapeExportFileDialog.cpp
         src/QtSpacescapeMainWindow.cpp
@@ -36,7 +35,6 @@ IF(APPLE)
         src/QtFilePathProperty.cpp
     )
     SET(SPC_MOC_HDRS
-        include/QtOgreWidgetOSX.h
         include/QtSpacescapeAboutDialog.h
         include/QtSpacescapeAboutDialogUI.h
         include/QtSpacescapeExportFileDialog.h
@@ -81,7 +79,6 @@ IF(APPLE)
 ELSE(APPLE)
     SET(SPC_SRCS
         src/Main.cpp
-        src/QtOgreWidget.cpp
         src/QtSpacescapeAboutDialog.cpp
         src/QtSpacescapeExportFileDialog.cpp
         src/QtSpacescapeMainWindow.cpp
@@ -89,7 +86,6 @@ ELSE(APPLE)
         src/QtFilePathProperty.cpp
     )
     SET(SPC_MOC_HDRS
-        include/QtOgreWidget.h
         include/QtSpacescapeAboutDialog.h
         include/QtSpacescapeAboutDialogUI.h
         include/QtSpacescapeExportFileDialog.h
@@ -106,13 +102,8 @@ SET(SPC_RESOURCES
 
 QT5_ADD_RESOURCES(SPC_RESOURCES_RCC ${SPC_RESOURCES})
 
-
 # copy plugins.cfg next to our binaries
-if(EXISTS ${OGRE_CONFIG_DIR}/plugins_d.cfg)
-    file(COPY ${OGRE_CONFIG_DIR}/plugins_d.cfg DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-else()
-    file(COPY ${OGRE_CONFIG_DIR}/plugins.cfg DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-endif()
+file(COPY ${OGRE_CONFIG_DIR}/plugins.cfg DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 IF(APPLE)
   SET(MACOSX_BUNDLE_BUNDLE_NAME Spacescape)
@@ -126,7 +117,7 @@ ELSEIF(WIN32)
   ADD_EXECUTABLE(Spacescape WIN32 ${SPC_SRCS} ${SPC_MOC_SRCS} ${SPC_MOC_HDRS} ${SPC_RESOURCES_RCC})
 ENDIF()
 
-TARGET_LINK_LIBRARIES(Spacescape SpacescapePlugin "${OGRE_LIBRARIES}" Qt5::Widgets)
+TARGET_LINK_LIBRARIES(Spacescape SpacescapePlugin "${OGRE_LIBRARIES}" OgreBitesQt Qt5::Widgets)
 TARGET_LINK_LIBRARIES(Spacescape QtPropertyBrowser)
 
 IF(WIN32)

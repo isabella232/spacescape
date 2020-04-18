@@ -29,7 +29,7 @@ THE SOFTWARE.
 */
 #include "QtSpacescapeWidget.h"
 #include <QMouseEvent>
-//#include "OGRE/Ogre.h"
+
 #include <Ogre.h>
 
 #ifdef Q_WS_MAC
@@ -42,12 +42,15 @@ const float QtSpacescapeWidget::mRADIUS = (float)0.8;
 
 /** Constructor
 */
-QtSpacescapeWidget::QtSpacescapeWidget(QWidget *parent) : QtOgreWidget(parent,0),
-    mProgressListener(0),
-    mTimer(0) {
+QtSpacescapeWidget::QtSpacescapeWidget(QWidget *parent) : QWidget(parent,0),
+    mProgressListener(0), mOgreCtx("Spacescape") {
 	mSceneMgr = NULL;
 	mViewPort = NULL;
 	mMousePressed = false;
+
+	setAttribute( Qt::WA_OpaquePaintEvent );
+	setAttribute( Qt::WA_NativeWindow );
+	setAttribute( Qt::WA_PaintOnScreen );
 }
 
 /** Destructor
@@ -64,7 +67,9 @@ int QtSpacescapeWidget::addLayer(int type, const Ogre::NameValuePairList& params
 {
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
-        return plugin->addLayer(type, params);
+        int ret = plugin->addLayer(type, params);
+        mOgreCtx.getRoot()->renderOneFrame();
+        return ret;
     }
 
     return -1;
@@ -77,6 +82,7 @@ void QtSpacescapeWidget::clearLayers()
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
         plugin->clear();
+        mOgreCtx.getRoot()->renderOneFrame();
     }
 }
 
@@ -88,7 +94,9 @@ int QtSpacescapeWidget::copyLayer(unsigned int layerID)
 {
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
-        return plugin->duplicateLayer(layerID);
+        int ret = plugin->duplicateLayer(layerID);
+        mOgreCtx.getRoot()->renderOneFrame();
+        return ret;
     }
 
     return -1;
@@ -108,7 +116,9 @@ bool QtSpacescapeWidget::deleteLayer(unsigned int layerID)
 {
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
-        return plugin->deleteLayer(layerID);
+        bool ret = plugin->deleteLayer(layerID);
+        mOgreCtx.getRoot()->renderOneFrame();
+        return ret;
     }
 
     return false;
@@ -157,7 +167,7 @@ the Spacescape Ogre plugin
 */
 Ogre::SpacescapePlugin* QtSpacescapeWidget::getPlugin()
 {
-    if(!mRenderWindow) return NULL;
+    if(!mOgreCtx.getRoot()) return NULL;
     
     static SpacescapePlugin plugin;
     return &plugin;
@@ -167,26 +177,17 @@ Ogre::SpacescapePlugin* QtSpacescapeWidget::getPlugin()
 @param e The event data
 */
 void QtSpacescapeWidget::paintEvent(QPaintEvent *e) {
-    //QtOgreWidget::paintEvent(e);
-    
-	if(!mRenderWindow && !mTimer) {
-        // probly don't really need this timer
-        QTimer::singleShot(0, this, SLOT(initRenderWindow()));
-	}
+    if(!mOgreCtx.getRoot()) {
+        mOgreCtx.injectMainWindow(windowHandle());
+        mOgreCtx.useQtEventLoop(true);
+        mOgreCtx.initApp();
 
-	update();
-}
-
-void QtSpacescapeWidget::initRenderWindow() {
-    if(!mRenderWindow) {
+        setupResources();
+        setupScene();
         show();
-		//resize(800,600);
-		createRenderWindow();
-		setupResources();
-		setupScene();
-        
-        update();        
     }
+
+	mOgreCtx.getRoot()->renderOneFrame();
 }
 
 bool QtSpacescapeWidget::isHDREnabled()
@@ -239,7 +240,7 @@ void QtSpacescapeWidget::mouseMoveEvent(QMouseEvent *e) {
         mMousePressPos = curPos;
         mLastCamOrientation = mCameraNode->getOrientation();
 
-        update();
+        mOgreCtx.getRoot()->renderOneFrame();
     }
 }
 
@@ -268,7 +269,9 @@ bool QtSpacescapeWidget::moveLayerDown(unsigned int layerID)
 {
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
-        return plugin->moveLayer(layerID,-1);
+        bool ret = plugin->moveLayer(layerID,-1);
+        mOgreCtx.getRoot()->renderOneFrame();
+        return ret;
     }
 
     return false;
@@ -282,7 +285,9 @@ bool QtSpacescapeWidget::moveLayerUp(unsigned int layerID)
 {
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
-        return plugin->moveLayer(layerID,1);
+        bool ret = plugin->moveLayer(layerID,1);
+        mOgreCtx.getRoot()->renderOneFrame();
+        return ret;
     }
 
     return false;
@@ -321,13 +326,14 @@ void QtSpacescapeWidget::resizeEvent(QResizeEvent *e) {
         return;
     }
 
-	QtOgreWidget::resizeEvent(e);
-    
-	if (mRenderWindow) {
+	if (mOgreCtx.getRoot()) {
 		// Alter the camera aspect ratio to match the viewport
 		mCamera->setAspectRatio(Ogre::Real(width()) / Ogre::Real(height()));
-		mViewPort->update();
 	}
+
+	//QTimer::singleShot(30, windowHandle(), SLOT(requestUpdate()));
+
+	QWidget::resizeEvent(e);
 }
 
 /** Save a Spacescape .xml file
@@ -349,6 +355,7 @@ void QtSpacescapeWidget::setDebugBoxVisible(bool visible)
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
         plugin->setDebugBoxVisible(visible);
+        mOgreCtx.getRoot()->renderOneFrame();
     }
 }
 
@@ -357,6 +364,7 @@ void QtSpacescapeWidget::setHDREnabled(bool enabled)
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
         plugin->setHDREnabled(enabled);
+        mOgreCtx.getRoot()->renderOneFrame();
     }
 }
 
@@ -369,6 +377,7 @@ void QtSpacescapeWidget::setLayerVisible(unsigned int layerID, bool visible)
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
         plugin->setLayerVisible(layerID,visible);
+        mOgreCtx.getRoot()->renderOneFrame();
     }
 }
 
@@ -412,16 +421,15 @@ void QtSpacescapeWidget::setupResources(void) {
 /** Setup the scene
 */
 void QtSpacescapeWidget::setupScene(void) {
-	mSceneMgr = Ogre::Root::getSingleton().createSceneManager(Ogre::ST_GENERIC);
+	mSceneMgr = Ogre::Root::getSingleton().createSceneManager();
 	
 	// Create the camera
 	mCamera = mSceneMgr->createCamera("PlayerCam");
-	mCamera->setPosition(Ogre::Vector3(0, 0, 0));
     mCamera->setNearClipDistance(0.1f);
     mCamera->setFarClipDistance(10000.0f);
 	
 	// Create one viewport, entire window
-	mViewPort = mRenderWindow->addViewport(mCamera);
+	mViewPort = mOgreCtx.getRenderWindow()->addViewport(mCamera);
 	mViewPort->setBackgroundColour(Ogre::ColourValue(0,0,0));
 	mViewPort->setClearEveryFrame(true);
 	
@@ -435,18 +443,9 @@ void QtSpacescapeWidget::setupScene(void) {
 	mCamera->setAspectRatio(Ogre::Real(mViewPort->getActualWidth()) / Ogre::Real(mViewPort->getActualHeight()));
     mCameraNode = mSceneMgr->getRootSceneNode()->createChildSceneNode();
     mCameraNode->attachObject(mCamera);
-
-    startTimer(200);
     
 //    Ogre::NameValuePairList params;
 //    addLayer(1, params);
-}
-
-/** Handle a timer event - calls update()
-@param e The event data
-*/
-void QtSpacescapeWidget::timerEvent(QTimerEvent *) {
-    update();
 }
 
 /** Update the params or a SpacescapeLayer
@@ -458,7 +457,9 @@ bool QtSpacescapeWidget::updateLayer(unsigned int layerID, const Ogre::NameValue
 {
     Ogre::SpacescapePlugin* plugin = getPlugin();
     if(plugin) {
-        return plugin->updateLayer(layerID,params);
+        bool ret = plugin->updateLayer(layerID,params);
+        mOgreCtx.getRoot()->renderOneFrame();
+        return ret;
     }
 
     return false;
