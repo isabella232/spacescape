@@ -31,6 +31,9 @@ THE SOFTWARE.
 #define __SPACESCAPEPREREQUISITES_H__
 
 #include "OgrePrerequisites.h"
+#if OGRE_VERSION_MAJOR > 2
+#include "OgreDeprecated.h"
+#endif
 
 namespace Ogre
 {
